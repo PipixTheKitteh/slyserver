@@ -13,13 +13,5 @@ public class LDAPFrontDoor {
     @RestClient
     FormInterface extensionsService;
 
-/*
-    @Path("fetch")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public SerialisedForm hello(@QueryParam("id") String id) {
-        return extensionsService.getById(id);
-    }
-*/
 }
 

