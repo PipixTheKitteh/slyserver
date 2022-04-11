@@ -20,7 +20,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
     public static Map<String, CacheEntry> cache = new HashMap<>();
 
-    private String frontend;
 
     private String byteToHex(byte num) {
         char[] hexDigits = new char[2];
@@ -44,7 +43,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
          if(dn.equals("cn=boom")) {
              if(roa instanceof AddRequest) {
-                 AddRequest ar= (AddRequest) roa;
                  log.info("replaced payload");
                  byte[] b=roa.toEntry().getAttribute("javaSerializedData").getValueByteArray();
                  StringBuilder hex=new StringBuilder();
@@ -71,26 +69,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
         cache.put(ce.dn, ce);
 
 
-    }
-
-    private void formatPrint(CacheEntry ce) {
-
-
-        System.out.println("----");
-        System.out.println("dn:"+ce.dn);
-        System.out.println("cn:"+ce.cn);
-        for(Attribute a:ce.attributes) {
-
-            System.out.println("a:basename:"+a.getBaseName());
-            System.out.println("a:name:"+a.getName());
-            System.out.println("a:options"+a.getOptions());
-            var values=a.getRawValues();
-            for(var v : values) {
-                System.out.println("a:value:"+v.stringValue());
-
-            }
-            System.out.println("---");
-        }
     }
 
 
@@ -192,11 +170,6 @@ public class Interceptor extends InMemoryOperationInterceptor {
 
         public List<Attribute> attributes;
         public String dn;
-        public String[] objectClass;
-        public String[] javaClassNames;
-        public String javaClassName;
-        public String cn;
-        public byte[] javaSerialisedData;
     }
 
 }
